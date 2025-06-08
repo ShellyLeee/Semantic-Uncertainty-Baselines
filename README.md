@@ -1,26 +1,76 @@
 # SNNE
 
-This repository is the official implementation of our ACL Findings 2025 paper [Beyond Semantic Entropy: Boosting LLM Uncertainty Quantification with Pairwise Semantic Similarity](#).
+This repository is the official implementation of our ACL Findings 2025 paper [Beyond Semantic Entropy: Boosting LLM Uncertainty Quantification with Pairwise Semantic Similarity](https://arxiv.org/abs/2506.00245).
 
 ## 🔗 Quick Links
 - [SNNE](#snne)
   - [🔗 Quick Links](#-quick-links)
   - [Install Requirements](#install-requirements)
+  - [Data Preparation](#data-preparation)
   - [Demo](#demo)
   - [Bugs or Questions?](#bugs-or-questions)
   - [Citation](#citation)
-  - [Acknowledgments](#acknowledgments)
+  - [Acknowledgements](#acknowledgements)
 
 
 ## Install Requirements
 ```bash
-Coming soon
+conda env create -f environment.yaml
+conda activate snne
+pip install flash-attn==2.6.1 --no-build-isolation
+pip install -e .
 ```
 
+## Data Preparation
+For almost all tasks, the dataset is downloaded automatically from the Hugging Face Datasets library upon first execution.
+The only exception is BioASQ (task b, BioASQ11, 2023), for which the data needs to be [downloaded](http://participants-area.bioasq.org/datasets) manually and stored at `./data/bioasq/training11b.json`.
 
 ## Demo
+### Generate answers + Compute SE, NE, DSE, and pTrue
+- QA
 ```bash
-Coming soon
+./scripts/generate/generate_qa.sh
+```
+
+- Summarization
+```bash
+./scripts/generate/generate_summarization.sh
+```
+
+- Translation
+```bash
+./scripts/generate/generate_translation.sh
+```
+
+### Compute other UQ methods
+- SNNE and WSNNE
+```bash
+./scripts/compute/compute_snne.sh
+```
+
+- Graph baselines (SumEigv, Deg, Eccen) + NumSet + LexSim
+```bash
+./scripts/compute/compute_graph_baselines.sh
+```
+
+- KLE
+```bash
+./scripts/compute/compute_kle.sh
+```
+
+- LUQ
+```bash
+./scripts/compute/compute_luq.sh
+```
+
+- SAR
+```bash
+./scripts/compute/compute_sar.sh
+```
+
+- Eigenscore
+```bash
+./scripts/compute/compute_eigenscore.sh
 ```
 
 ## Bugs or Questions?
@@ -38,5 +88,5 @@ Please cite our paper if you find the repo helpful in your work:
 }
 ```
 
-## Acknowledgments
-The structure of this repo is largely based on [semantic_uncertainty](https://github.com/jlko/semantic_uncertainty). The black-box methods' implementation is taken from [UQ-NLG](https://github.com/zlin7/UQ-NLG) while the summarization part is taken from [lm-polygraph](https://github.com/IINemo/lm-polygraph). We are very grateful for their open sources.
+## Acknowledgements
+The structure of this repo is largely based on [semantic_uncertainty](https://github.com/jlko/semantic_uncertainty). The graph baselines are adapted from [UQ-NLG](https://github.com/zlin7/UQ-NLG) while summarization and translation parts are adapted from [lm-polygraph](https://github.com/IINemo/lm-polygraph). We are very grateful for their open sources.
