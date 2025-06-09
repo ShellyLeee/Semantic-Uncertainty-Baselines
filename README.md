@@ -73,6 +73,10 @@ The only exception is BioASQ (task b, BioASQ11, 2023), for which the data needs 
 ./scripts/compute/compute_eigenscore.sh
 ```
 
+### Evaluation
+- **SE, NE, DSE, and pTrue**: Open the Jupyter notebook in `notebooks/evaluation.ipynb`, populate the `wandb_id` variable in the second cell with the id assigned to your run, and execute all cells of the notebook.
+- **Other methods**: Open the csv files in the corresponding folder `*_results` and find the evaluation metrics.
+
 ## Bugs or Questions?
 If you have any questions related to the code or the paper, feel free to email Dang Nguyen (nguyentuanhaidang@gmail.com). If you encounter any problems when using the code, or want to report a bug, you can open an issue. Please try to specify the problem with details so we can help you better and quicker!
 
