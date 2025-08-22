@@ -16,7 +16,9 @@ from snne.uncertainty.utils.compute_utils import get_parser, setup_wandb, load_p
 
 HF_MAPPING = {
     "Meta-Llama-3.1-8B-Instruct": "meta-llama/Llama-3.1-8B-Instruct",
-    "Phi-3-mini-4k-instruct": "microsoft/Phi-3-mini-4k-instruct"
+    "Phi-3-mini-4k-instruct": "microsoft/Phi-3-mini-4k-instruct",
+    "Llama-2-7b-chat": "meta-llama/Llama-2-7b-chat-hf", # Add Llama-2-7b model
+    "Llama-2-13b-chat": "meta-llama/Llama-2-13b-chat-hf" # Add Llama-2-13b model
 }
 
 

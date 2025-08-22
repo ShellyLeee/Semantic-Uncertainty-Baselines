@@ -400,6 +400,8 @@ def save_or_load_results(args, result_dict, save_dict, save_embedding_path, save
     
     if 'luq' in save_list:
         print("Save LUQ similarity matrix.")
+        if 'entail' not in save_dict:
+            save_dict['entail'] = {}  # Fix: to make sure 'entail' key exists
         save_dict['entail']['list_generation_luq_similarity'] = result_dict['list_generation_luq_similarity']
         save_dict['entail']['list_generation_with_question_luq_similarity'] = result_dict['list_generation_with_question_luq_similarity']
     elif 'luq' in load_list:

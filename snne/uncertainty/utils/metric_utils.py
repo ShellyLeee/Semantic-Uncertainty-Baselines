@@ -124,7 +124,7 @@ def get_metric(metric):
     
     # Entailment
     elif metric == 'entail':
-        def metric(response, example, model, strict_entailment, *args, **kwargs):
+        def metric(response, example, model, strict_entailment=False, *args, **kwargs):
             is_true = False
             list_reference = example['reference']['answers']['text']
             question = example['question']
