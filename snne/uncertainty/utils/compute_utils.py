@@ -14,7 +14,8 @@ from snne.uncertainty.utils.entropy_utils import (
     get_sentence_similarites
 )
 
-
+# For compute uncertainty metrics
+# More inclined to calculate accuracy, similarity, and indicators
 def get_parser():
     # Parse arguments
     parser = argparse.ArgumentParser()
@@ -92,7 +93,8 @@ def setup_wandb(args, prefix='compute'):
         notes=slurm_jobid
     )
     
-    
+# Load precomputed pkl files after generating answers and calculating SE, DSE, pTrue
+# Load precomputed uncertainty measures
 def load_precomputed_results(args):
     with open(f"{args.data_path}/validation_generations.pkl", 'rb') as infile:
         validation_generations = pickle.load(infile)
@@ -157,7 +159,7 @@ def load_precomputed_results(args):
     
     return precomputed_results
 
-
+# Collect info for calculating uncertainty measures
 def collect_info(args, validation_generations, metric, entailment_model, embedding_model, rouge, tokenizer, list_semantic_ids, save_dict, save_embedding_path, save_list, load_list):
     print(f"Compute and save {save_list}")
     print(f"Load precomputed {load_list}")
@@ -292,7 +294,7 @@ def collect_info(args, validation_generations, metric, entailment_model, embeddi
         # LUQ
         'list_generation_luq_similarity': list_generation_luq_similarity,
         'list_generation_with_question_luq_similarity': list_generation_with_question_luq_similarity,
-        # BB methods
+        # BlackBox methods
         'list_num_sets': list_num_sets, 
         'list_generation_lexcial_sim': list_generation_lexcial_sim,
         'list_generation_with_question_lexical_sim': list_generation_with_question_lexical_sim,

@@ -4,6 +4,7 @@ import torch
 import snne.uncertainty.utils.clustering as pc
 
 
+# Greedy/DFS Clustering For Semantic Entropy: Getting semantic set using entailment/exact_match/metrics/embeddings
 def greedy_clustering(strings_list, are_equivalent):
     # Initialise all ids with -1.
     N = len(strings_list)
@@ -53,6 +54,7 @@ def dfs_clustering(strings_list, are_equivalent):
     return semantic_set_ids
 
 
+# Function for snne
 def snne(similarity_matrix, labels, variant="only_denom", temperature=1.0, epsilon=1e-8, exclude_diagonal=True, weight=None):
     # Convert inputs to tensors if they are not already
     if not isinstance(similarity_matrix, torch.Tensor):
@@ -108,6 +110,7 @@ def snne(similarity_matrix, labels, variant="only_denom", temperature=1.0, epsil
     return loss
 
 
+# Getting similarity score & matrix: for soft_nearest_neighbor_loss
 def entailment_similarity_score(entailment_model, text1, text2, strict_entailment=True, exclude_neutral=True, bidirectional=True):
     score_1 = entailment_model.get_similarity_score(
         text1, 
@@ -147,6 +150,8 @@ def entailment_similarity_matrix(entailment_model, list_strings, strict_entailme
     return similarity_matrix
 
 
+# Three different ways to calculate simialrity matrix
+## RougeL-based Lexical Similarity
 def lexical_similarity_matrix(rouge, list_strings, tokenizer=None):
     n_samples = len(list_strings)
     similarity_matrix = torch.eye(n_samples)
@@ -163,7 +168,7 @@ def lexical_similarity_matrix(rouge, list_strings, tokenizer=None):
     
     return similarity_matrix
 
-
+## Exact match similarity
 def exact_match_similarity_matrix(list_strings):
     n_samples = len(list_strings)
     similarity_matrix = torch.eye(n_samples)
@@ -176,7 +181,7 @@ def exact_match_similarity_matrix(list_strings):
     
     return similarity_matrix
 
-
+## Squad_f1 score similarity
 def squad_f1_similarity_matrix(squad_f1, list_strings, example, symmetric=False):
     n_samples = len(list_strings)
     similarity_matrix = torch.eye(n_samples)
@@ -193,7 +198,7 @@ def squad_f1_similarity_matrix(squad_f1, list_strings, example, symmetric=False)
     
     return similarity_matrix
 
-
+# SAR
 def get_tokenwise_importance(measure_model, tokenizer, generations, question):
     token_importance_list = []
     
@@ -216,7 +221,7 @@ def get_tokenwise_importance(measure_model, tokenizer, generations, question):
     
     return token_importance_list
 
-
+# SAR
 def get_sentence_similarites(measure_model, generations_with_question):
     n_samples = len(generations_with_question)
     similarity_matrix = np.eye(n_samples)
@@ -232,7 +237,7 @@ def get_sentence_similarites(measure_model, generations_with_question):
     
     return similarity_matrix
 
-
+# Graph: Calculate lexical similarity [sim_mat: different ways]
 def compute_lexical_similarity(sim_mat):
     n_samples = len(sim_mat)
     num = 0.
@@ -248,7 +253,7 @@ def compute_lexical_similarity(sim_mat):
     
     return num / denom
 
-
+# Graph: SumEigv
 def get_spectral_eigv(similarity_matrix, adjust=True):
     clusterer = pc.SpetralClusteringFromLogits(
         eigv_threshold=None,
@@ -256,13 +261,13 @@ def get_spectral_eigv(similarity_matrix, adjust=True):
     
     return clusterer.get_eigvs(similarity_matrix).clip(0 if adjust else -1).sum()
 
-
+# Graph: Deg
 def get_degreeuq(similarity_matrix):
     ret = np.asarray(np.sum(1 - similarity_matrix, axis=1))
     
     return ret.mean(), ret
 
-
+# Luq pair
 def get_luq_pair(similarity_matrix):
     # S[i, j]: i -> j
     # Exclude self-similarity
@@ -271,7 +276,7 @@ def get_luq_pair(similarity_matrix):
     
     return ret.mean(), ret
 
-
+# Graph: Eccen
 def get_eccentricity(similarity_matrix, eigv_threshold=0.9):
     clusterer = pc.SpetralClusteringFromLogits(
         eigv_threshold=eigv_threshold,
@@ -282,7 +287,7 @@ def get_eccentricity(similarity_matrix, eigv_threshold=0.9):
     
     return np.linalg.norm(ds, 2, axis=0), ds
 
-
+# SAR
 def get_sar(list_token_importance, list_sentence_similarity_matrix, list_token_log_likelihoods, temp=0.001):
     sar = []
     
@@ -311,7 +316,7 @@ def get_sar(list_token_importance, list_sentence_similarity_matrix, list_token_l
         
     return np.array(sar)
 
-
+# INSIDE: eigenscore
 def get_eigenscore(list_embeddings, alpha=0.001):
     sentence_embeddings = np.array(list_embeddings)
     dim = sentence_embeddings.shape[-1]

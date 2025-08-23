@@ -36,7 +36,8 @@ def set_all_seeds(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-
+# For the whole pipeline: includes Generate & Compute
+# involves the whole process of data generation → uncertainty calculation → clustering → semantic entropy calculation → evaluation
 def get_parser(stages=['generate', 'compute']):
     entity = os.getenv('WANDB_SEM_UNC_ENTITY', None)
 

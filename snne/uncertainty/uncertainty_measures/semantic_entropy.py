@@ -203,7 +203,7 @@ def get_semantic_ids_using_entailment(strings_list, model, strict_entailment=Fal
 
     return semantic_set_ids
 
-
+# New Add
 def get_semantic_ids_using_exact_match(strings_list, cluster_method='greedy'):
     """Group list of predictions into semantic meaning."""
 
@@ -219,7 +219,7 @@ def get_semantic_ids_using_exact_match(strings_list, cluster_method='greedy'):
 
     return semantic_set_ids
 
-
+# New Add
 def get_semantic_ids_using_metric(strings_list, metric, example, cluster_method='greedy'):
     """Group list of predictions into semantic meaning."""
     # TODO: squad metric, i.e. F1, is not symmetric
@@ -237,7 +237,7 @@ def get_semantic_ids_using_metric(strings_list, metric, example, cluster_method=
 
     return semantic_set_ids
 
-
+# New Add
 def get_semantic_ids_using_embedding(strings_list, model, cluster_method='dfs', threshold=0.5):
     """Group list of predictions into semantic meaning."""
 
@@ -321,7 +321,7 @@ def cluster_assignment_entropy(semantic_ids):
     entropy = - (probabilities * np.log(probabilities)).sum()
     return entropy
 
-
+# New Add
 def weighted_cluster_assignment_entropy(semantic_ids, log_probs):
     """Use token probability to weight cluster assignment entropy"""
     n_generations = len(semantic_ids)
@@ -331,7 +331,7 @@ def weighted_cluster_assignment_entropy(semantic_ids, log_probs):
     entropy = - (np.exp(log_probs) * np.log(probabilities)).sum()
     return entropy
 
-
+# New Add
 def soft_nearest_neighbor_loss(strings_list, entailment_model, embedding_model, semantic_ids, similarity_matrix=None, variant="only_denom", similarity_model="entailment", temperature=1.0, exclude_diagonal=True, strict_entailment=True, weight=None):
     if similarity_matrix is None:
         if similarity_model == "entailment":
