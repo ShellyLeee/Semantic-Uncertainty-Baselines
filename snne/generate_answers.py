@@ -15,6 +15,15 @@ from snne.uncertainty.utils.metric_utils import get_metric, get_reference
 from snne.uncertainty.uncertainty_measures import p_true as p_true_utils
 from snne.compute_uncertainty_measures import main as main_compute
 
+# -------- Structure --------
+# 1. 初始化logger，设置数据集等参数，固定随机种子，建立保存目录
+# 2. 数据准备：分为train和validation，将train拆分为few-shot（构造prompt）和剩余的样本（用来生成答案），构造few-shot prompt；
+#    模型初始化，pTrue baseline prompt
+# 3. 生成答案：（1）低温t=0.1生成最有可能的答案用于计算准确率（2）高温随机采样不同答案（3）如果有pTrue：还会再validation计算pTrue
+#    计算准确率，保存生成结果和实验细节
+# 4. 计算不确定性指标
+
+
 
 utils.setup_logger()
 

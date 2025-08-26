@@ -84,7 +84,7 @@ list_sar_token_importance = result_dict['list_sar_token_importance']
 list_sar_token_log_likelihoods = result_dict['list_sar_token_log_likelihoods']
 list_sar_sentence_similarity_matrix = result_dict['list_sar_sentence_similarity_matrix']
 
-# Calculate LUQ-pair
+# Calculate SAR
 list_method_name = []
 list_auroc = []
 list_auarc = []

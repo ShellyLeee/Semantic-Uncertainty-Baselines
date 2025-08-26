@@ -83,6 +83,7 @@ def remove_split_layer(device_map_in):
     return device_map
 
 
+# Possible Models: [checkpoint], deepseek, llama, mistral, falcon, phi, gemma, qwen - define model and tokenizer
 class HuggingfaceModel(BaseModel):
     """Hugging Face Model."""
 

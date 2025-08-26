@@ -11,7 +11,10 @@ from snne.uncertainty.utils.entropy_utils import (
     entailment_similarity_matrix, 
     lexical_similarity_matrix, 
     get_tokenwise_importance,
-    get_sentence_similarites
+    get_sentence_similarites,
+    sdlg_compute_semantic_pairs,
+    sdlg_compute_semantic_clusters,
+    sdlg_compute_semantic_entropy
 )
 
 # For compute uncertainty metrics
@@ -140,7 +143,13 @@ def load_precomputed_results(args):
     else:
         eigenscore_exist = False
 
-    print(f"Save dict exist is {save_dict_exist}. Embedding exist is {embedding_exist}. Lexsim exist is {lexsim_exist}. LUQ sim exist is {luq_sim_exist}. SAR exist is {sar_exist}. Eigenscore exist is {eigenscore_exist}")
+    # Add SDLG
+    if save_dict_exist and ('sdlg' in save_dict.keys()):
+        sdlg_exist = True
+    else:
+        sdlg_exist = False
+
+    print(f"Save dict exist is {save_dict_exist}. Embedding exist is {embedding_exist}. Lexsim exist is {lexsim_exist}. LUQ sim exist is {luq_sim_exist}. SAR exist is {sar_exist}. Eigenscore exist is {eigenscore_exist}. SDLG exist is {sdlg_exist}")
         
     list_semantic_ids = slice_1d(results_old['semantic_ids'], args.num_generations)
     
@@ -154,7 +163,8 @@ def load_precomputed_results(args):
         'luq_sim_exist': luq_sim_exist,
         'sar_exist': sar_exist,
         'list_semantic_ids': list_semantic_ids,
-        'eigenscore_exist': eigenscore_exist
+        'eigenscore_exist': eigenscore_exist,
+        'sdlg_exist': sdlg_exist
     }
     
     return precomputed_results
@@ -176,6 +186,7 @@ def collect_info(args, validation_generations, metric, entailment_model, embeddi
     list_generation_lexcial_sim, list_generation_with_question_lexical_sim = [], []
     list_sar_token_importance, list_sar_sentence_similarity_matrix = [], []
     list_sar_token_log_likelihoods = []
+    list_sdlg_semantic_pairs = [] # Add SDLG semantic pairs
 
     for idx, tid in tqdm(enumerate(validation_generations)):
         example = validation_generations[tid]
@@ -273,6 +284,23 @@ def collect_info(args, validation_generations, metric, entailment_model, embeddi
         semantic_ids = list_semantic_ids[idx]
         num_sets = max(semantic_ids) + 1
         list_num_sets.append(num_sets)
+
+        # Get SDLG
+        if 'sdlg' in save_list:
+            if 'sdlg_responses' in example and example['sdlg_responses']:
+                sdlg_generations_for_metrics = [{'generation_text': [text]} for text in example['sdlg_responses']]
+                
+                # Call the function from entropy_utils
+                sdlg_pairs_matrix = sdlg_compute_semantic_pairs(
+                    sdlg_generations_for_metrics, 
+                    question, 
+                    entailment_model, 
+                    tokenizer,        
+                    entailment_model.device
+                )
+                list_sdlg_semantic_pairs.append(sdlg_pairs_matrix)
+            else:
+                list_sdlg_semantic_pairs.append(None)
         
     print(Counter(validation_is_true))
     
@@ -302,7 +330,9 @@ def collect_info(args, validation_generations, metric, entailment_model, embeddi
         'list_sar_token_importance': list_sar_token_importance,
         'list_sar_sentence_similarity_matrix': list_sar_sentence_similarity_matrix,
         'list_sar_token_log_likelihoods': list_sar_token_log_likelihoods,
-        'list_sample_embeddings': list_sample_embeddings
+        'list_sample_embeddings': list_sample_embeddings,
+        # SDLG
+        'list_sdlg_semantic_pairs': list_sdlg_semantic_pairs
     }
     
     result_dict = save_or_load_results(
@@ -442,6 +472,26 @@ def save_or_load_results(args, result_dict, save_dict, save_embedding_path, save
             save_dict['eigenscore']['list_sample_embeddings'], 
             args.num_generations
         )
+
+    # --- SDLG Integration Block ---
+    # Add this new block to handle saving and loading for SDLG's pre-computed data.
+    # This follows the exact same pattern as the other uncertainty measures.
+    if 'sdlg' in save_list:
+        print("Save SDLG semantic pairs matrix.")
+        # Create a new key 'sdlg' in the dictionary that will be saved to the .pkl file.
+        save_dict['sdlg'] = {
+            'list_sdlg_semantic_pairs': result_dict['list_sdlg_semantic_pairs'],
+        }
+    elif 'sdlg' in load_list:
+        print("Load precomputed SDLG semantic pairs matrix.")
+        # When loading, retrieve the data from the loaded dictionary and place it
+        # back into the result_dict that the main script will use.
+        # We assume a 'slice_2d' function exists to handle cases where num_generations might differ.
+        result_dict['list_sdlg_semantic_pairs'] = slice_2d(
+            save_dict['sdlg']['list_sdlg_semantic_pairs'],
+            args.num_generations
+        )
+    # --- End of SDLG Integration Block ---
     
     with open(save_embedding_path, 'wb') as f:
         pickle.dump(save_dict, f)
