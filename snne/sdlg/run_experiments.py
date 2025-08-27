@@ -33,6 +33,25 @@ def encode_and_format_dataset(dataset):
     return dataset
 
 
+# -------- Structure --------
+# 0. 环境配置: 读args（模型名、生成条数、数据集名等）, 保存为config.yaml，打印run_id, seed_everything等固定随机源
+#    选择设备llm & deberta，加载tokenizer
+#
+# 1. get_results(): 逐样本生成：读数据集，逐条遍历样本，对第b个样本提取question组成prompt，生成：
+#   (1) 最可能答案 (generate_text(decoding_method='most_likely'))-> 按照args对应配置设置温度、tppP等
+#       计算correctness（compute_correctness），写入results_dict['correctness_dict']
+#       计算该条生成likelihood
+#   (2) 追加更多生成（SDLG/MS）
+#       - SDLG：先放入most_likely, 然后执行generate_semantically_diverse_output_sequences(...)，记录generation和likelihood
+#       - MS：先放入most_likely, 然后generate_text(decoding_method='baseline') 做普通采样，记录generation和likelihood。
+#   (3) 写result_dict -> results/<run_id>/results_dict_{b}.pkl
+#
+# 2. 计算semantic_pairs: 调用 compute_semantic_paris(...)
+#    它会读取刚才写出的 results_dict_*.pkl，对其中的多条回答做两两语义等价判定（依赖 deberta_model），得到布尔矩阵 semantic_pairs
+#    结果以文件形式写回（和 results_dict_*.pkl 同目录），供后续分析脚本直接读取。
+# -------- Structure --------
+
+
 # Output: result_dict['correct_dict','baseline', 'sdlg']['generations', 'likelihoods']
 def get_results(args, base_path, llm_model, tokenizer, device_llm, deberta_model, deberta_tokenizer, device_deberta, dataset):
 

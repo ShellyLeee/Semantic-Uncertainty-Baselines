@@ -36,7 +36,7 @@ class Args:
         self.token_prob_threshold = 0.001
         self.alphas = (1/3, 1/3, 1/3)  # weighting of attribution, substitution, and importance scores
 
-        # (2.2) MS
+        # (2.2) MS (Semantic Entropy)
         self.num_beams_baseline = 1
         self.num_return_sequences_baseline = 1   # for diverse beam search (ms: 1)
         self.num_beam_groups_baseline = 1        # for diverse beam search (ms: 1)
