@@ -182,6 +182,7 @@ def get_semantic_ids_using_entailment(strings_list, model, strict_entailment=Fal
         text1 = strings_list[i]
         text2 = strings_list[j]
 
+        # Forward and Backward: bidirectional entailment checking
         implication_1 = model.check_implication(text1, text2, example=example)
         implication_2 = model.check_implication(text2, text1, example=example)  # pylint: disable=arguments-out-of-order
         assert (implication_1 in [0, 1, 2]) and (implication_2 in [0, 1, 2])
@@ -282,6 +283,7 @@ def logsumexp_by_id(semantic_ids, log_likelihoods, agg='sum_normalized', return_
     return log_likelihood_per_semantic_id
 
 
+# The MC estimated of SE
 def predictive_entropy(log_probs):
     """Compute MC estimate of entropy.
 
@@ -292,12 +294,13 @@ def predictive_entropy(log_probs):
 
     return entropy
 
-
+# The real PE
 def predictive_entropy_rao(log_probs):
     entropy = -np.sum(np.exp(log_probs) * log_probs)
     return entropy
 
 
+# The DSE
 def cluster_assignment_entropy(semantic_ids):
     """Estimate semantic uncertainty from how often different clusters get assigned.
 
@@ -321,7 +324,7 @@ def cluster_assignment_entropy(semantic_ids):
     entropy = - (probabilities * np.log(probabilities)).sum()
     return entropy
 
-# New Add
+# New Add: SNNE entropy with 'np.exp(log_probs)' diffenrent from DSE
 def weighted_cluster_assignment_entropy(semantic_ids, log_probs):
     """Use token probability to weight cluster assignment entropy"""
     n_generations = len(semantic_ids)
@@ -331,7 +334,7 @@ def weighted_cluster_assignment_entropy(semantic_ids, log_probs):
     entropy = - (np.exp(log_probs) * np.log(probabilities)).sum()
     return entropy
 
-# New Add
+# New Add: SNN loss
 def soft_nearest_neighbor_loss(strings_list, entailment_model, embedding_model, semantic_ids, similarity_matrix=None, variant="only_denom", similarity_model="entailment", temperature=1.0, exclude_diagonal=True, strict_entailment=True, weight=None):
     if similarity_matrix is None:
         if similarity_model == "entailment":

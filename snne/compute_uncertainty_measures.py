@@ -174,7 +174,7 @@ def main(args):
         else:
             metric_model = None
 
-    # Restore outputs from `generate_answrs.py` run.
+    # Restore outputs from `generate_answers.py` run.
     result_dict_pickle = restore('uncertainty_measures.pkl')
     with open(result_dict_pickle.name, "rb") as infile:
         result_dict = pickle.load(infile)

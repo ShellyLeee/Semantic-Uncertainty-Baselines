@@ -24,7 +24,7 @@ def greedy_clustering(strings_list, are_equivalent):
 
     assert -1 not in semantic_set_ids
 
-    return semantic_set_ids
+    return semantic_set_ids # return the relevant semantic_set_id the responses correlated to
 
 
 def dfs_clustering(strings_list, are_equivalent):

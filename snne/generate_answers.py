@@ -24,7 +24,8 @@ from snne.compute_uncertainty_measures import main as main_compute
 # （2）高温随机采样不同答案
 #       【3】增加一个SDLG的方法 [可以直接在(1)之后就进行run_experiment.py的SDLG部分；考虑是否取代前者高温随机采样/不输出baseline部分/调节设置与前者吻合]
 # （3）如果有pTrue：还会再validation计算pTrue
-#    计算准确率，保存生成结果和实验细节
+#    
+#   计算准确率，保存生成结果和实验细节
 # 4. 计算不确定性指标
 # -------- Structure --------
 
@@ -205,12 +206,14 @@ def main(args):
             if args.reset_seed:
                 torch.manual_seed(args.random_seed)
 
+            # Answer Generation: i=0 for low-temp, i>0 for high-temp
             for i in range(num_generations):
 
                 # Temperature for first generation is always `0.1`.
                 temperature = 0.1 if i == 0 else args.temperature
                 min_p = 0.0 if i == 0 else args.min_p
 
+                # Predicted result for this iteration
                 predicted_answer, token_log_likelihoods, embedding = model.predict(
                     local_prompt, temperature, min_p=min_p)
                 embedding = embedding.cpu() if embedding is not None else None
@@ -247,7 +250,7 @@ def main(args):
                     full_responses.append(
                         (predicted_answer, token_log_likelihoods, embedding, acc))
 
-            # Append all predictions for this example to `generations`.
+            # Append all predictions for this example to `generations`. ⚠️ 此处都会连接起来，而不是生成一些semantic pairs like sdlg
             generations[example['id']]['responses'] = full_responses
 
             if args.compute_p_true and dataset_split == 'validation':
@@ -306,3 +309,10 @@ if __name__ == '__main__':
         logging.info('STARTING `compute_uncertainty_measures`!')
         main_compute(args)
         logging.info('FINISHED `compute_uncertainty_measures`!')
+
+
+    # 🤔在generate answer之后，存了accuracy和pTrue进去uncertainty_measures.pkl
+    #   先存train_generations.pkl, 再存validation_generations.pkl, uncertainty_measures.pkl, experiment_details.pkl
+    # 然后compute_uncertainty_measures计算下面的SE，DSE，PE...
+    #   读取validation_generations.pkl, 然后get_semantic_ids_using_entailment算聚类，最后根据参数semantic_ids, log_probs和公式计算各大指标...
+
