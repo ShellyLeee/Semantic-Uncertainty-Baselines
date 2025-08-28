@@ -312,7 +312,8 @@ if __name__ == '__main__':
 
 
     # 🤔在generate answer之后，存了accuracy和pTrue进去uncertainty_measures.pkl
-    #   先存train_generations.pkl, 再存validation_generations.pkl, uncertainty_measures.pkl, experiment_details.pkl
+        # 与run_experiment不同：i=0是低温，i>0是高温，直接全部生成
+        # 先存train_generations.pkl, 再存validation_generations.pkl, uncertainty_measures.pkl, experiment_details.pkl
     # 然后compute_uncertainty_measures计算下面的SE，DSE，PE...
-    #   读取validation_generations.pkl, 然后get_semantic_ids_using_entailment算聚类，最后根据参数semantic_ids, log_probs和公式计算各大指标...
+        # 读取validation_generations.pkl, 然后get_semantic_ids_using_entailment算聚类，最后根据参数semantic_ids, log_probs和公式计算各大指标...
 
