@@ -2,13 +2,15 @@ import os
 import torch
 import numpy as np
 
-from snne.uncertainty.utils import utils as snne_utils
+from utils import generate_text, compute_likelihood, clean_generation
 
 
 latest_grads = [None]
 latest_embeddings = [None]
 def forward_hook(module, input, output):
     latest_embeddings[0] = output.detach()
+    if not output.requires_grad:
+        output.requires_grad_(True) # turn on gradient checking
     output.register_hook(lambda grad: latest_grads.__setitem__(0, grad))
 
 
@@ -44,6 +46,15 @@ def rank_tensor(t, descending=True):
 
 
 # algorithm 2 (according to paper)
+# 0. 准备hook，损失函数...
+# 1. Encode问题和回答
+# 2. 构造DeBERTa判别输入
+# 3. 计算分类损失+反向传播
+# 4. Sanity Check 输入是否匹配（确保 token 匹配没有出错。如果 tokenizer 分词行为不一致，就会报Error并跳过该样本。）
+# 5. 获取Token Attribution Score
+# 6. 计算替换分数+概率 (subtitution score + importance score)
+# 7. 综合排名打分
+# 8. 返回最终排序 & token_info字典
 def compute_token_score_ranking(deberta_model, 
                                 deberta_tokenizer, 
                                 device_deberta, 
@@ -83,18 +94,24 @@ def compute_token_score_ranking(deberta_model,
     
     assert encoded_input["input_ids"].shape[1] == latest_grads[0].shape[1] == latest_embeddings[0].shape[1]
     
+    # encoded_input 中每个序列前半段的 question 部分 是否和单独 encode 的 encoded_question 完全一致
+    ## 后面你要依赖这个长度（len(encoded_question)）来 准确 slice gradient 对应的回答部分。
     for i in range(len(additional_generated_text) + 1):
         if encoded_question.tolist() != encoded_input["input_ids"][i, :len(encoded_question)].tolist():
-            print(f"Error: {encoded_question.tolist()} vs. {encoded_input['input_ids'][i, :len(encoded_question)].tolist()}")
-            return False
+            print(f"😠Error: {encoded_question.tolist()} vs. {encoded_input['input_ids'][i, :len(encoded_question)].tolist()}")
+            return False, False # Change to return two bools
+    # DeBERTa tokenizer 把 initial_generation_text 分词后，每组 word_token_indices 解码回来后，是否能还原出原始的word
+    ## 必须保证 split() 得到的 word 和 tokenizer 得到的 token ids -> decode 后结果一致。
     for word, word_token_indices in zip(initial_generation_text.split(), all_word_indices):
-        if word.strip() != deberta_tokenizer.decode(encoded_answer[word_token_indices]).strip():
-            print(f'Error: words do not match ({word.strip()} vs. {deberta_tokenizer.decode(encoded_answer[all_word_indices]).strip()})')
-            return False
-    if len(encoded_answer) != initial_generation_ids.shape[0]:
-        # Example: encoded_answer: [' the', ' _', 'Sel', 'ache', '_.'] vs. initial_generation_ids: [' the', ' _', 'Sel', 'ache', '_', '.']
-        print(f"Error: {[deberta_tokenizer.decode(e) for e in encoded_answer]} vs. {[deberta_tokenizer.decode(e) for e in initial_generation_ids]}")
-        return False
+        if word.strip() != deberta_tokenizer.decode(encoded_answer[word_token_indices]).strip(): # 
+            print(f'😢Error: words do not match ({word.strip()} vs. {deberta_tokenizer.decode(encoded_answer[all_word_indices]).strip()})')
+            return False, False
+    # 用 DeBERTa 的 tokenizer encode 出来的 encoded_answer 的长度，是否和原始生成的 initial_generation_ids 等长
+    ## 由于后续要做token-level 替换、替换打分等操作
+    # if len(encoded_answer) != initial_generation_ids.shape[0]:
+    #     # Example: encoded_answer: [' the', ' _', 'Sel', 'ache', '_.'] vs. initial_generation_ids: [' the', ' _', 'Sel', 'ache', '_', '.']
+    #     print(f"😱Error: {[deberta_tokenizer.decode(e) for e in encoded_answer]} vs. {[deberta_tokenizer.decode(e) for e in initial_generation_ids]}")
+    #     return False, False
             
     handle.remove()
     token_info = {}
@@ -182,7 +199,7 @@ def compute_token_score_ranking(deberta_model,
                                    args.alphas[1] * ranking_substitution_score + 
                                    args.alphas[2] * ranking_importance_score, 
                                    descending=False)
-
+    # print("😄Token Score:", sorted_indices)
     return sorted_indices, token_info
 
 
@@ -286,7 +303,7 @@ def generate_semantically_diverse_output_sequences(results_dict,
             if new_token_idx != args.eos_token_ids:
 
                 final_input_ids = torch.hstack([all_input_ids, torch.tensor(new_token_idx).unsqueeze(0).unsqueeze(0).to(device_llm)])
-                alternative_generation = snne_utils.sdlg_generate_text(args=args, 
+                alternative_generation = generate_text(args=args, 
                                                     model=model, 
                                                     tokenizer=tokenizer, 
                                                     input_ids=final_input_ids, 
@@ -298,7 +315,7 @@ def generate_semantically_diverse_output_sequences(results_dict,
                     continue # skip if first predicted token is eos token 
                 generation_to_add = torch.hstack([new_input_ids[0], torch.tensor(new_token_idx)])
                 generation_text = tokenizer.decode(generation_to_add, skip_special_tokens=True).strip()
-                cleaned_generation_text = snne_utils.sdlg_clean_generation(generation_text)
+                cleaned_generation_text = clean_generation(generation_text)
                 alternative_generation = {
                     'generation_ids': [generation_to_add],
                     'generation_text': [generation_text],
@@ -313,7 +330,7 @@ def generate_semantically_diverse_output_sequences(results_dict,
                 continue
 
             # compute likelihood
-            alternative_likelihoods = snne_utils.sdlg_compute_likelihood(prompt, alternative_generation, model, device_llm, compute_cleaned=False, store_logits=True)
+            alternative_likelihoods = compute_likelihood(prompt, alternative_generation, model, device_llm, compute_cleaned=False, store_logits=True)
 
             # log additional information of alternative generation
             alternative_generation['word_idx'] = initial_gen_word_idx

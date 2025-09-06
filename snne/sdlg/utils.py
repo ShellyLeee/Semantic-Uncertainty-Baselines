@@ -5,7 +5,9 @@ import torch
 import math
 from tqdm import tqdm
 import pickle
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, OPTForCausalLM
+import re
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModelForCausalLM
+
 from accelerate import dispatch_model
 
 
@@ -17,7 +19,6 @@ def seed_everything(seed):
     torch.cuda.manual_seed(seed)
 
 
-# To define the model and the tokenizer for entailment judgement while calculating SE
 def get_models_and_tokenizers(model_type_llm=None, 
                               device_llm=None, 
                               model_type_deberta=None, 
@@ -26,172 +27,49 @@ def get_models_and_tokenizers(model_type_llm=None,
                               get_tokenizer_only_deberta=False, 
                               use_flash_attention=True):
 
-    # if model_type_llm is not None:
+    # ------- LLM model -------
+    if model_type_llm is not None:
+        assert device_llm is not None, "device_llm must be specified"
 
-    #     if not get_tokenizer_only_llm:
-    #         assert device_llm is not None , "device_llm must be specified"
-    #     if not get_tokenizer_only_deberta:
-    #         assert device_deberta is not None, "device_deberta must be specified"
+        # HF 模型路径（允许是 repo id，例如 meta-llama/Llama-2-7b-chat-hf）
+        model_path = model_type_llm  # now it's full HF path like "meta-llama/Llama-2-7b-chat-hf"
 
-    #     if model_type_llm in ['opt-125m', 'opt-350m', 'opt-1.3b', 'opt-2.7b', 'opt-6.7b', 'opt-13b', 'opt-30b', 'opt-66b']:
-    #         opt_path = os.path.join("facebook", model_type_llm)
-    #         tokenizer = AutoTokenizer.from_pretrained(opt_path)
-    #         if use_flash_attention:
-    #             model = OPTForCausalLM.from_pretrained(opt_path,
-    #                                                 torch_dtype=torch.bfloat16, 
-    #                                                 attn_implementation="flash_attention_2",
-    #                                                 use_cache=True) if not get_tokenizer_only_llm else None
-    #         else:
-    #             model = OPTForCausalLM.from_pretrained(opt_path, torch_dtype=torch.bfloat16) if not get_tokenizer_only_llm else None
-    #     else:
-    #         raise ValueError(f"model type {model_type_llm} not supported!")
-        
-    #     if not get_tokenizer_only_llm:
-    #         if model_type_llm in ['opt-30b']:
-    #             device_map = {
-    #                 'model.decoder.embed_tokens': 0,
-    #                 'model.decoder.embed_positions': 0,
-    #                 'model.decoder.layers.0': 0,
-    #                 'model.decoder.layers.1': 0,
-    #                 'model.decoder.layers.2': 0,
-    #                 'model.decoder.layers.3': 0,
-    #                 'model.decoder.layers.4': 0,
-    #                 'model.decoder.layers.5': 0,
-    #                 'model.decoder.layers.6': 0,
-    #                 'model.decoder.layers.7': 0,
-    #                 'model.decoder.layers.8': 0,
-    #                 'model.decoder.layers.9': 0,
-    #                 'model.decoder.layers.10': 0,
-    #                 'model.decoder.layers.11': 0,
-    #                 'model.decoder.layers.12': 0,
-    #                 'model.decoder.layers.13': 0,
-    #                 'model.decoder.layers.14': 0,
-    #                 'model.decoder.layers.15': 0,
-    #                 'model.decoder.layers.16': 1,
-    #                 'model.decoder.layers.17': 1,
-    #                 'model.decoder.layers.18': 1,
-    #                 'model.decoder.layers.19': 1,
-    #                 'model.decoder.layers.20': 1,
-    #                 'model.decoder.layers.21': 1,
-    #                 'model.decoder.layers.22': 1,
-    #                 'model.decoder.layers.23': 1,
-    #                 'model.decoder.layers.24': 1,
-    #                 'model.decoder.layers.25': 1,
-    #                 'model.decoder.layers.26': 1,
-    #                 'model.decoder.layers.27': 1,
-    #                 'model.decoder.layers.28': 1,
-    #                 'model.decoder.layers.29': 1,
-    #                 'model.decoder.layers.30': 1,
-    #                 'model.decoder.layers.31': 1,
-    #                 'model.decoder.layers.32': 1,
-    #                 'model.decoder.layers.33': 1,
-    #                 'model.decoder.layers.34': 1,
-    #                 'model.decoder.layers.35': 1,
-    #                 'model.decoder.layers.36': 1,
-    #                 'model.decoder.layers.37': 1,
-    #                 'model.decoder.layers.38': 1,
-    #                 'model.decoder.layers.39': 1,
-    #                 'model.decoder.layers.40': 1,
-    #                 'model.decoder.layers.41': 1,
-    #                 'model.decoder.layers.42': 1,
-    #                 'model.decoder.layers.43': 1,
-    #                 'model.decoder.layers.44': 1,
-    #                 'model.decoder.layers.45': 1,
-    #                 'model.decoder.layers.46': 0,
-    #                 'model.decoder.layers.47': 0,
-    #                 'model.decoder.layers.48': 0,
-    #                 'model.decoder.final_layer_norm': 0,
-    #                 'lm_head': 0
-    #             }
-    #             dispatch_model(model, device_map=device_map)
-    #         elif model_type_llm in ['opt-66b']:
-    #             device_map = {
-    #                 'model.decoder.embed_tokens': 0,
-    #                 'model.decoder.embed_positions': 0,
-    #                 'model.decoder.layers.0': 0,
-    #                 'model.decoder.layers.1': 0,
-    #                 'model.decoder.layers.2': 0,
-    #                 'model.decoder.layers.3': 0,
-    #                 'model.decoder.layers.4': 0,
-    #                 'model.decoder.layers.5': 0,
-    #                 'model.decoder.layers.6': 0,
-    #                 'model.decoder.layers.7': 0,
-    #                 'model.decoder.layers.8': 0,
-    #                 'model.decoder.layers.9': 0,
-    #                 'model.decoder.layers.10': 1,
-    #                 'model.decoder.layers.11': 1,
-    #                 'model.decoder.layers.12': 1,
-    #                 'model.decoder.layers.13': 1,
-    #                 'model.decoder.layers.14': 1,
-    #                 'model.decoder.layers.15': 1,
-    #                 'model.decoder.layers.16': 1,
-    #                 'model.decoder.layers.17': 1,
-    #                 'model.decoder.layers.18': 1,
-    #                 'model.decoder.layers.19': 1,
-    #                 'model.decoder.layers.20': 1,
-    #                 'model.decoder.layers.21': 1,
-    #                 'model.decoder.layers.22': 1,
-    #                 'model.decoder.layers.23': 1,
-    #                 'model.decoder.layers.24': 1,
-    #                 'model.decoder.layers.25': 1,
-    #                 'model.decoder.layers.26': 1,
-    #                 'model.decoder.layers.27': 2,
-    #                 'model.decoder.layers.28': 2,
-    #                 'model.decoder.layers.29': 2,
-    #                 'model.decoder.layers.30': 2,
-    #                 'model.decoder.layers.31': 2,
-    #                 'model.decoder.layers.32': 2,
-    #                 'model.decoder.layers.33': 2,
-    #                 'model.decoder.layers.34': 2,
-    #                 'model.decoder.layers.35': 2,
-    #                 'model.decoder.layers.36': 2,
-    #                 'model.decoder.layers.37': 2,
-    #                 'model.decoder.layers.38': 2,
-    #                 'model.decoder.layers.39': 2,
-    #                 'model.decoder.layers.40': 2,
-    #                 'model.decoder.layers.41': 2,
-    #                 'model.decoder.layers.42': 2,
-    #                 'model.decoder.layers.43': 2,
-    #                 'model.decoder.layers.44': 3,
-    #                 'model.decoder.layers.45': 3,
-    #                 'model.decoder.layers.46': 3,
-    #                 'model.decoder.layers.47': 3,
-    #                 'model.decoder.layers.48': 3,
-    #                 'model.decoder.layers.49': 3,
-    #                 'model.decoder.layers.50': 3,
-    #                 'model.decoder.layers.51': 3,
-    #                 'model.decoder.layers.52': 3,
-    #                 'model.decoder.layers.53': 3,
-    #                 'model.decoder.layers.54': 3,
-    #                 'model.decoder.layers.55': 3,
-    #                 'model.decoder.layers.56': 3,
-    #                 'model.decoder.layers.57': 3,
-    #                 'model.decoder.layers.58': 3,
-    #                 'model.decoder.layers.59': 3,
-    #                 'model.decoder.layers.60': 3,
-    #                 'model.decoder.layers.61': 0,
-    #                 'model.decoder.layers.62': 0,
-    #                 'model.decoder.layers.63': 0,
-    #                 'model.decoder.layers.64': 0,
-    #                 'model.decoder.final_layer_norm': 0,
-    #                 'lm_head': 0
-    #             }
-    #             dispatch_model(model, device_map=device_map)
-    #         else:
-    #             model = model.to(device_llm)
-    # else:
-    #     model, tokenizer = None, None
+        # tokenizer 加载
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_path,
+            use_fast=False,
+            trust_remote_code=True
+        )
 
+        # Fix pad token if missing
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+
+        # model 加载（只在不是 get_tokenizer_only_llm 时加载）
+        if not get_tokenizer_only_llm:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+                device_map="auto",  # 自动多卡分布（或你自己写 device_map）
+                trust_remote_code=True
+            )
+
+            # 保险起见（如果模型没有自动 .to）
+            model = model.eval()
+        else:
+            model = None
+    else:
+        model, tokenizer = None, None
+
+    # ------- DeBERTa NLI -------
     if model_type_deberta is not None:
-
         if not get_tokenizer_only_deberta:
             assert device_deberta is not None and not get_tokenizer_only_deberta, "device_deberta must be specified"
 
-        # "microsoft/deberta-v2-xlarge-mnli" -> SNNE used for entailment checking.
         if model_type_deberta in ["deberta-base-mnli", "deberta-large-mnli", "deberta-xlarge-mnli", "deberta-v2-xlarge-mnli", "deberta-v2-xxlarge-mnli"]:
             deberta_tokenizer = AutoTokenizer.from_pretrained(f"microsoft/{model_type_deberta}")
             deberta_model = AutoModelForSequenceClassification.from_pretrained(f"microsoft/{model_type_deberta}").to(device_deberta) if not get_tokenizer_only_deberta else None
-
     else:
         deberta_model, deberta_tokenizer = None, None
 
@@ -239,8 +117,9 @@ def generate_text(args,
                                         do_sample=args.do_sample_most_likely,
                                         temperature=args.temperature_most_likely,
                                         top_p=args.top_p_most_likely,
-                                        max_length=len_prompt + args.max_length_of_generated_sequence,
-                                        eos_token_id=args.eos_token_ids,)
+                                        max_length=len_prompt + args.max_length_of_generated_sequence, 
+                                        eos_token_id=args.eos_token_ids,
+                                        )  # Add repetition penalty:repetition_penalty=1.1, early_stopping=True,
     elif decoding_method == 'baseline':
         generation_ids = model.generate(input_ids,
                                         num_beams=args.num_beams_baseline,
@@ -251,7 +130,8 @@ def generate_text(args,
                                         temperature=args.temperature_baseline,
                                         top_p=args.top_p_baseline,
                                         max_length=len_prompt + args.max_length_of_generated_sequence,
-                                        eos_token_id=args.eos_token_ids,)
+                                        eos_token_id=args.eos_token_ids,
+                                        ) # repetition_penalty=1.1, early_stopping=True,
     elif decoding_method == 'sdlg':
         generation_ids = model.generate(input_ids,
                                         num_beams=args.num_beams_sdlg * args.num_return_sequences_sdlg,
@@ -260,16 +140,14 @@ def generate_text(args,
                                         temperature=args.temperature_sdlg,
                                         top_p=args.top_p_sdlg,
                                         max_length=len_prompt + args.max_length_of_generated_sequence,
-                                        eos_token_id=args.eos_token_ids,)
+                                        eos_token_id=args.eos_token_ids,
+                                       ) # repetition_penalty=1.1, early_stopping=True,
 
     generation_ids = generation_ids.to('cpu')
 
     generation_ids_list, generation_text_list, cleaned_generation_ids_list, cleaned_generation_text_list = list(), list(), list(), list()
 
-    if isinstance(model, OPTForCausalLM):
-        pad_token_id = 1  # <pad> token of opt models
-    else:
-        raise NotImplementedError("Define pad token related to new model!")
+    pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
 
     for i in range(len(generation_ids)):
         
@@ -303,7 +181,6 @@ def prepare_generated_text(generation_ids,
                            **kwargs):
     list_generation_dicts = []
 
-
     for i in range(len(generation_ids)):
         generation_dict = {
             'generation_ids': [generation_ids[i]],
@@ -334,30 +211,44 @@ def compute_correctness(args,
     if exact_match_metric is not None:
         exact_match = 0.0
         for answer in reference_answers:
-            results = exact_match_metric.compute(predictions=[most_likely_generation_text],
-                                                references=[answer],
-                                                ignore_case=True,
-                                                ignore_punctuation=True)
-            exact_match = max(results['exact_match'], exact_match)
+            try:
+                results = exact_match_metric.compute(predictions=[most_likely_generation_text],
+                                                    references=[answer],
+                                                    ignore_case=True,
+                                                    ignore_punctuation=True)
+                exact_match = max(results['exact_match'], exact_match)
+            except Exception as e:
+                print(f"Error in exact_match computation: {e}")
+                print(f"Prediction: {repr(most_likely_generation_text)}")
+                print(f"Reference: {repr(answer)}")
+                continue
         
         correctness_dict['exact_match'] = exact_match
             
     if rouge is not None:
         rouge1, rouge2, rougeL = 0.0, 0.0, 0.0
         for answer in reference_answers:
-            rouge_results = rouge.compute(predictions=[most_likely_generation_text], 
-                                        references=[answer])
-            rouge1 = max(rouge_results['rouge1'].item(), rouge1)
-            rouge2 = max(rouge_results['rouge2'].item(), rouge2)
-            rougeL = max(rouge_results['rougeL'].item(), rougeL)
+            try:
+                rouge_results = rouge.compute(predictions=[most_likely_generation_text], 
+                                            references=[answer])
+                rouge1 = max(rouge_results['rouge1'].item(), rouge1)
+                rouge2 = max(rouge_results['rouge2'].item(), rouge2)
+                rougeL = max(rouge_results['rougeL'].item(), rougeL)
+            except Exception as e:
+                print(f"Error in rouge computation: {e}")
+                continue
 
         incorrect_rouge1, incorrect_rouge2, incorrect_rougeL = 0.0, 0.0, 0.0
         for incorrect_answer in incorrect_answers:
-            rouge_results = rouge.compute(predictions=[most_likely_generation_text], 
-                                        references=[incorrect_answer])
-            incorrect_rouge1 = max(rouge_results['rouge1'].item(), incorrect_rouge1)
-            incorrect_rouge2 = max(rouge_results['rouge2'].item(), incorrect_rouge2)
-            incorrect_rougeL = max(rouge_results['rougeL'].item(), incorrect_rougeL)
+            try:
+                rouge_results = rouge.compute(predictions=[most_likely_generation_text], 
+                                            references=[incorrect_answer])
+                incorrect_rouge1 = max(rouge_results['rouge1'].item(), incorrect_rouge1)
+                incorrect_rouge2 = max(rouge_results['rouge2'].item(), incorrect_rouge2)
+                incorrect_rougeL = max(rouge_results['rougeL'].item(), incorrect_rougeL)
+            except Exception as e:
+                print(f"Error in incorrect rouge computation: {e}")
+                continue
 
         if len(incorrect_answers) != 0:
             correctness_dict['rouge1-diff'] = rouge1 - incorrect_rouge1
@@ -368,13 +259,30 @@ def compute_correctness(args,
         correctness_dict['rougeL'] = rougeL
 
     if bleurt is not None:
-        scores_true = max(bleurt.compute(predictions=[most_likely_generation_text] * len(reference_answers), references=reference_answers)['scores'])
-
-        correctness_dict['bleurt'] = scores_true
-        if len(incorrect_answers) != 0:
-            scores_false = max(bleurt.compute(predictions=[most_likely_generation_text] * len(incorrect_answers), 
-                                              references=incorrect_answers)['scores'])
-            correctness_dict['bleurt-diff'] = scores_true - scores_false
+        try:
+            # Check if it's actually BLEURT or BLEU/sacrebleu [Sorry for the download issue on bleurt]
+            if hasattr(bleurt, 'compute') and 'bleurt' in str(type(bleurt)).lower():
+                # Real BLEURT metric
+                scores_true = max(bleurt.compute(predictions=[most_likely_generation_text] * len(reference_answers), references=reference_answers)['scores'])
+                correctness_dict['bleurt'] = scores_true
+                
+                if len(incorrect_answers) != 0:
+                    scores_false = max(bleurt.compute(predictions=[most_likely_generation_text] * len(incorrect_answers), 
+                                                      references=incorrect_answers)['scores'])
+                    correctness_dict['bleurt-diff'] = scores_true - scores_false
+            else:
+                # It's sacrebleu, handle differently
+                for answer in reference_answers:
+                    result = bleurt.compute(predictions=[most_likely_generation_text], references=[[answer]])
+                    if 'score' in result:
+                        correctness_dict['bleu'] = result['score']
+                        break
+                    elif 'bleu' in result:
+                        correctness_dict['bleu'] = result['bleu']
+                        break
+        except Exception as e:
+            print(f"Error in bleurt/bleu computation: {e}")
+            # Skip BLEU computation if it fails
 
     return correctness_dict
 
@@ -397,24 +305,28 @@ def compute_likelihood(prompt,
 
         generation_ids = generation['generation_ids'][i]
 
-        generation_input = torch.hstack([prompt, generation_ids]).to(device)
+        generation_input = torch.hstack([prompt, generation_ids]).to(device) # 拼接prompt和生成的token做成模型输入
 
         target_ids = generation_input.clone()
-        target_ids[:len(prompt)] = -100
+        target_ids[:len(prompt)] = -100 # 计算loss：负对数似然估计
         model_output = model(torch.reshape(generation_input, (1, -1)), labels=target_ids)
-        average_neg_log_likelihood = model_output['loss'].item()
-        neg_log_likelihood = average_neg_log_likelihood * (len(generation_ids))
+        average_neg_log_likelihood = model_output['loss'].item() # 计算平均NLL
+        neg_log_likelihood = average_neg_log_likelihood * (len(generation_ids)) # 计算整体NLL
 
         list_average_neg_log_likelihoods.append(average_neg_log_likelihood)
         list_neg_log_likelihood.append(neg_log_likelihood)
 
         # compute logits
         if store_logits:
-            generation_logits = model_output["logits"][0, len(prompt)-1:-1, :].to('cpu') 
+            generation_logits = model_output["logits"][0, len(prompt)-1:-1, :].to('cpu') # logits提取
             # shift by 1 since token probs at last token of prompt already belong to first token of generation
             list_generation_logits.append(generation_logits)
             assert generation_logits.shape[0] == generation_ids.shape[0]
 
+        # 如果 compute_cleaned 为 True，会额外对清洗后的生成进行以下处理：
+        #   若 cleaned 和原始一致，直接复用已有 loss 和 logits
+        #   若 cleaned 是空字符串，则将似然设为 -inf（概率为0）
+        #   否则重新跑一遍模型计算 cleaned 的 NLL 和 logits
         if compute_cleaned:
 
             cleaned_generation_ids = generation['cleaned_generation_ids'][i]
@@ -458,6 +370,7 @@ def compute_likelihood(prompt,
         'cleaned_neg_log_likelihood': list_cleaned_neg_log_likelihood,
         'cleaned_generation_logits': list_cleaned_generation_logits,
     }
+
 
 
 @torch.no_grad()
